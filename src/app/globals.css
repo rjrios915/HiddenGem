@@ -1,26 +1,119 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Palette ── */
+  --bg:           #FFFFFF;
+  --surface:      #FFFFFF;
+  --card:         #FFFFFF;
+  --border:       #E8E8E8;
+  --border-dark:  #D0D0D0;
+  --primary:      #1A3050;
+  --accent:       #2660A8;
+  --sage:         #6A9CC8;
+  --sage-light:   #C0D9EE;
+  --terracotta:   #C4734A;
+  --terra-light:  #F2DDD3;
+  --text:         #0D0D0D;
+  --muted:        #666666;
+  --cream-dark:   #F5F5F5;
+  --cream-darker: #EBEBEB;
+
+  /* ── Typography ── */
+  --font-display: var(--font-cormorant), 'Georgia', serif;
+  --font-sans:    var(--font-jakarta), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.65;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Paper grain texture */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.032;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--cream-dark); }
+::-webkit-scrollbar-thumb { background: var(--sage); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ── Selection ── */
+::selection { background: rgba(26,48,80,0.12); color: var(--text); }
+
+/* ── Focus ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Display font utility ── */
+.font-display { font-family: var(--font-display); }
+
+/* ── Animations ── */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+.animate-fade-up    { animation: fade-up    0.45s cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-fade-in    { animation: fade-in    0.3s ease forwards; }
+.animate-spin-slow  { animation: spin-slow  3s linear infinite; }
+.animate-pulse-slow { animation: pulse-slow 2.5s ease-in-out infinite; }
+.animate-float      { animation: float      3.5s ease-in-out infinite; }
+
+/* ── Skeleton ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--cream-dark) 25%, var(--border) 50%, var(--cream-dark) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
