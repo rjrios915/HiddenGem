@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Menu, X, Compass, Bookmark, Map, Sparkles } from 'lucide-react'
+import { Menu, X, Compass, Bookmark, Map, Sparkles, UserCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import GemSvg from '@/components/ui/GemSvg'
 import type { User } from '@supabase/supabase-js'
@@ -18,9 +18,10 @@ const NAV_LINKS = [
 export default function Navbar() {
   const pathname = usePathname()
   const router   = useRouter()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [user,     setUser]     = useState<User | null>(null)
-  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen,     setMenuOpen]     = useState(false)
+  const [user,         setUser]         = useState<User | null>(null)
+  const [scrolled,     setScrolled]     = useState(false)
+  const [avatarOpen,   setAvatarOpen]   = useState(false)
 
   useEffect(() => {
     const sb = createClient()
@@ -136,30 +137,66 @@ export default function Navbar() {
         {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           {user ? (
-            <button
-              onClick={handleSignOut}
-              title={`Sign out (${user.email})`}
-              style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '50%',
-                background: '#1A3050',
-                border: '2px solid #6A9CC8',
-                color: '#FFFFFF',
-                fontSize: '13px',
-                fontWeight: 700,
-                fontFamily: 'var(--font-sans)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                transition: 'all 0.15s ease',
-              }}
-              className="hover:bg-[#122340] hover:scale-105"
-            >
-              {avatarInitial}
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setAvatarOpen(v => !v)}
+                title={user.email ?? ''}
+                style={{
+                  width: '34px', height: '34px', borderRadius: '50%',
+                  background: '#1A3050', border: '2px solid #6A9CC8',
+                  color: '#FFFFFF', fontSize: '13px', fontWeight: 700,
+                  fontFamily: 'var(--font-sans)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'all 0.15s ease',
+                }}
+                className="hover:bg-[#122340] hover:scale-105"
+              >
+                {avatarInitial}
+              </button>
+
+              {avatarOpen && (
+                <div
+                  style={{
+                    position: 'absolute', top: '42px', right: 0,
+                    background: '#FFFFFF', borderRadius: '12px',
+                    border: '1px solid #E8E8E8', boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                    padding: '6px', minWidth: '160px', zIndex: 100,
+                  }}
+                  className="animate-fade-up"
+                >
+                  <p style={{ fontSize: '11px', color: '#999', padding: '6px 10px 4px', fontFamily: 'var(--font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.email}
+                  </p>
+                  <Link
+                    href="/profile"
+                    onClick={() => setAvatarOpen(false)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '8px 10px', borderRadius: '8px',
+                      fontSize: '13px', color: '#0D0D0D', textDecoration: 'none',
+                      fontFamily: 'var(--font-sans)', transition: 'background 0.12s',
+                    }}
+                    className="hover:bg-[#F5F5F5]"
+                  >
+                    <UserCircle size={14} strokeWidth={1.8} />
+                    Profile & settings
+                  </Link>
+                  <button
+                    onClick={() => { setAvatarOpen(false); handleSignOut() }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      width: '100%', padding: '8px 10px', borderRadius: '8px',
+                      fontSize: '13px', color: '#C4734A', background: 'none',
+                      border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                      transition: 'background 0.12s',
+                    }}
+                    className="hover:bg-[#FEF2EC]"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href="/auth"

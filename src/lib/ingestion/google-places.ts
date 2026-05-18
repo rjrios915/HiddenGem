@@ -49,6 +49,20 @@ interface GooglePlace {
   formattedAddress?: string
   location: { latitude: number; longitude: number }
   editorialSummary?: { text: string }
+  photos?: { name: string }[]
+}
+
+async function fetchPhotoUri(photoName: string, apiKey: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(
+      `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&skipHttpRedirect=true&key=${apiKey}`
+    )
+    if (!res.ok) return undefined
+    const data = await res.json()
+    return data.photoUri as string | undefined
+  } catch {
+    return undefined
+  }
 }
 
 function mapCategory(types: string[], primaryType?: string): ActivityCategory {
@@ -83,6 +97,7 @@ const FIELD_MASK = [
   'places.formattedAddress',
   'places.location',
   'places.editorialSummary',
+  'places.photos',
 ].join(',')
 
 export async function fetchGooglePlacesActivities(
@@ -124,10 +139,13 @@ export async function fetchGooglePlacesActivities(
         if (seenIds.has(place.id)) continue
         seenIds.add(place.id)
 
-        const category   = mapCategory(place.types, place.primaryType) ?? fallbackCategory
-        const priceLevel = mapPrice(place.priceLevel)
-        const rating     = place.rating ?? 4.0
+        const category    = mapCategory(place.types, place.primaryType) ?? fallbackCategory
+        const priceLevel  = mapPrice(place.priceLevel)
+        const rating      = place.rating ?? 4.0
         const reviewCount = place.userRatingCount ?? 30
+        const imageUrl    = place.photos?.[0]?.name
+          ? await fetchPhotoUri(place.photos[0].name, process.env.GOOGLE_PLACES_API_KEY!)
+          : undefined
 
         results.push({
           title:            place.displayName.text,
@@ -140,7 +158,7 @@ export async function fetchGooglePlacesActivities(
           review_count:     reviewCount,
           source:           'google',
           url:              place.websiteUri ?? `https://maps.google.com/?q=${encodeURIComponent(place.displayName.text)}`,
-          image_url:        undefined,
+          image_url:        imageUrl,
           address:          place.formattedAddress,
           hidden_gem_score: scoreFromActivityData({ rating, review_count: reviewCount }),
         })

@@ -33,6 +33,20 @@ const CATEGORY_GRADIENTS: Record<string, string> = {
 }
 const DEFAULT_GRADIENT = 'linear-gradient(145deg, #F0F0F0 0%, #E0E0E0 100%)'
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  music:        '🎵',
+  art:          '🎨',
+  cafes:        '☕',
+  outdoors:     '🌿',
+  fitness:      '💪',
+  volunteering: '🤝',
+  nightlife:    '🌙',
+  food:         '🍜',
+  workshops:    '🔧',
+  gaming:       '🎮',
+  wellness:     '🧘',
+}
+
 export default function ActivityCard({
   activity,
   explanation,
@@ -87,7 +101,7 @@ export default function ActivityCard({
           overflow: 'hidden',
         }}
       >
-        {activity.image_url && (
+        {activity.image_url ? (
           <img
             src={activity.image_url}
             alt={activity.title}
@@ -98,6 +112,15 @@ export default function ActivityCard({
             }}
             className="group-hover:scale-[1.04]"
           />
+        ) : (
+          <div style={{
+            width: '100%', height: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: '52px', opacity: 0.45, userSelect: 'none' }}>
+              {CATEGORY_EMOJI[activity.category] ?? '✨'}
+            </span>
+          </div>
         )}
 
         {/* Soft scrim at bottom */}
