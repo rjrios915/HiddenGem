@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Cormorant_Garamond, Plus_Jakarta_Sans } from 'next/font/google'
+import { AuthProvider } from '@/contexts/AuthContext'
 import './globals.css'
 
 const cormorant = Cormorant_Garamond({
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`h-full ${cormorant.variable} ${jakarta.variable}`}>
       <body className="min-h-full flex flex-col antialiased">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )

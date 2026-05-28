@@ -109,12 +109,13 @@ export default function OnboardingPage() {
         {/* Header */}
         <div style={{ marginBottom: '32px', textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-            <svg width="28" height="34" viewBox="0 0 44 52" fill="none" stroke="#1A3050" strokeWidth="1.5" strokeLinejoin="round">
-              <path d="M6,16 L16,2 L28,2 L38,16 L44,28 L22,52 L0,28 Z" />
-              <line x1="0" y1="28" x2="44" y2="28" /><line x1="0" y1="28" x2="22" y2="16" />
-              <line x1="44" y1="28" x2="22" y2="16" /><line x1="16" y1="2" x2="22" y2="16" />
-              <line x1="28" y1="2" x2="22" y2="16" /><line x1="10" y1="28" x2="22" y2="52" />
-              <line x1="34" y1="28" x2="22" y2="52" />
+            <svg width="40" height="28" viewBox="0 0 56 38" fill="none" stroke="#1A3050" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
+              <path d="M11,1 L45,1 L56,16 L28,38 L0,16 Z" />
+              <line x1="0" y1="16" x2="56" y2="16" />
+              <line x1="11" y1="1" x2="38" y2="16" />
+              <line x1="45" y1="1" x2="18" y2="16" />
+              <line x1="18" y1="16" x2="28" y2="38" />
+              <line x1="38" y1="16" x2="28" y2="38" />
             </svg>
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '24px', fontWeight: 500, letterSpacing: '-0.02em', marginBottom: '6px', color: '#1A1A14' }}>

@@ -1,17 +1,20 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { RefreshCw, Search, X } from 'lucide-react'
+import { Search, X, SlidersHorizontal } from 'lucide-react'
 import Navbar from '@/components/layout/Navbar'
 import ActivityCard from '@/components/feed/ActivityCard'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
-import Button from '@/components/ui/Button'
+import MoodChips from '@/components/feed/MoodChips'
 import type { RecommendationCard, UserPreferences, ActivityCategory } from '@/types'
 
 interface FeedClientProps {
   preferences: UserPreferences
   savedActivityIds: string[]
 }
+
+// Module-level cache — survives navigation, reset by search/mood changes
+let feedCache: RecommendationCard[] = []
 
 const CATEGORY_OPTIONS: { value: ActivityCategory | 'all'; label: string }[] = [
   { value: 'all',        label: 'All'         },
@@ -26,27 +29,31 @@ const CATEGORY_OPTIONS: { value: ActivityCategory | 'all'; label: string }[] = [
 ]
 
 export default function FeedClient({ preferences, savedActivityIds }: FeedClientProps) {
-  const [recommendations, setRecommendations] = useState<RecommendationCard[]>([])
-  const [loading,          setLoading]         = useState(true)
-  const [refreshing,       setRefreshing]      = useState(false)
+  const [recommendations, setRecommendations] = useState<RecommendationCard[]>(feedCache)
+  const [loading,          setLoading]         = useState(feedCache.length === 0)
   const [selectedCategory, setSelectedCategory] = useState<ActivityCategory | 'all'>('all')
   const [savedIds,         setSavedIds]        = useState<Set<string>>(new Set(savedActivityIds))
   const [searchQuery,      setSearchQuery]     = useState('')
   const [searchInput,      setSearchInput]     = useState('')
+  const [activeMood,       setActiveMood]      = useState<string | null>(null)
+  const [filtersOpen,      setFiltersOpen]     = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchRecommendations = useCallback(async () => {
     try {
       const params = new URLSearchParams()
       if (searchQuery.trim()) params.set('q', searchQuery.trim())
+      if (activeMood) params.set('mood', activeMood)
       const res = await fetch(`/api/recommendations?${params}`)
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
-      setRecommendations(data.recommendations ?? [])
+      const recs = data.recommendations ?? []
+      if (!searchQuery && !activeMood) feedCache = recs
+      setRecommendations(recs)
     } catch (err) {
       console.error(err)
     }
-  }, [searchQuery])
+  }, [searchQuery, activeMood])
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value)
@@ -64,13 +71,6 @@ export default function FeedClient({ preferences, savedActivityIds }: FeedClient
     fetchRecommendations().finally(() => setLoading(false))
   }, [fetchRecommendations])
 
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    await fetch('/api/recommendations/refresh', { method: 'POST' })
-    await fetchRecommendations()
-    setRefreshing(false)
-  }
-
   const handleSave = async (activityId: string) => {
     const isSaved = savedIds.has(activityId)
     setSavedIds(prev => {
@@ -83,6 +83,8 @@ export default function FeedClient({ preferences, savedActivityIds }: FeedClient
 
   const handleDismiss = (activityId: string) => {
     setRecommendations(prev => prev.filter(a => a.id !== activityId))
+    if (!searchQuery && !activeMood) feedCache = feedCache.filter(a => a.id !== activityId)
+    fetch(`/api/dismiss/${activityId}`, { method: 'POST' })
   }
 
   const filtered = selectedCategory === 'all'
@@ -97,37 +99,57 @@ export default function FeedClient({ preferences, savedActivityIds }: FeedClient
 
         {/* ── Header ── */}
         <div style={{
-          paddingTop: '40px', marginBottom: '32px',
-          display: 'flex', alignItems: 'flex-end',
-          justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px',
+          paddingTop: '40px', marginBottom: '28px',
         }}>
-          <div>
-            <h1 style={{
-              fontFamily: 'var(--font-display)',
-              fontStyle: 'italic',
-              fontSize: 'clamp(32px, 4vw, 46px)',
-              fontWeight: 500,
-              color: '#0D0D0D',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
-              marginBottom: '6px',
-            }}>
-              Your feed
-            </h1>
-            <p style={{ fontSize: '13px', color: '#666666', fontFamily: 'var(--font-sans)' }}>
-              Hidden gems picked for you
-            </p>
-          </div>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontStyle: 'italic',
+            fontSize: 'clamp(32px, 4vw, 46px)',
+            fontWeight: 500,
+            color: '#0D0D0D',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.1,
+            marginBottom: '6px',
+          }}>
+            Your feed
+          </h1>
+          <p style={{ fontSize: '13px', color: '#666666', fontFamily: 'var(--font-sans)' }}>
+            Hidden gems picked for you
+          </p>
+        </div>
 
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleRefresh}
-            loading={refreshing}
+        {/* ── Filter toggle ── */}
+        <div style={{ marginBottom: '16px' }}>
+          <button
+            onClick={() => setFiltersOpen(v => !v)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '7px 14px', borderRadius: '999px',
+              fontSize: '13px', fontWeight: 500,
+              fontFamily: 'var(--font-sans)',
+              color: filtersOpen || activeMood ? '#1A3050' : '#666666',
+              background: filtersOpen || activeMood ? 'rgba(26,48,80,0.07)' : '#F5F5F5',
+              border: filtersOpen || activeMood ? '1px solid rgba(26,48,80,0.2)' : '1px solid #E8E8E8',
+              cursor: 'pointer', transition: 'all 0.15s ease',
+            }}
           >
-            <RefreshCw size={13} strokeWidth={2} />
-            Refresh
-          </Button>
+            <SlidersHorizontal size={13} strokeWidth={2} />
+            {activeMood ? 'Vibe active' : 'Filter by vibe'}
+            {activeMood && (
+              <span
+                style={{
+                  width: '6px', height: '6px', borderRadius: '50%',
+                  background: '#1A3050', flexShrink: 0,
+                }}
+              />
+            )}
+          </button>
+
+          {filtersOpen && (
+            <div style={{ marginTop: '12px' }} className="animate-fade-up">
+              <MoodChips activeMood={activeMood} onMoodChange={setActiveMood} />
+            </div>
+          )}
         </div>
 
         {/* ── Search bar ── */}
@@ -209,10 +231,13 @@ export default function FeedClient({ preferences, savedActivityIds }: FeedClient
           </div>
         ) : filtered.length === 0 ? (
           <div style={{
-            textAlign: 'center', paddingTop: '80px', paddingBottom: '80px',
-            color: '#666666',
+            textAlign: 'center',
+            padding: '80px 24px',
+            background: '#FFFFFF',
+            border: '1px solid #E8E8E8',
+            borderRadius: '16px',
           }}>
-            <div style={{ marginBottom: '16px', opacity: 0.25, display: 'flex', justifyContent: 'center' }}>
+            <div style={{ marginBottom: '20px', opacity: 0.2, display: 'flex', justifyContent: 'center' }}>
               <svg width="56" height="38" viewBox="0 0 56 38" fill="none" stroke="#1A3050" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round">
                 <path d="M11,1 L45,1 L56,16 L28,38 L0,16 Z" />
                 <line x1="0" y1="16" x2="56" y2="16" />
@@ -222,12 +247,30 @@ export default function FeedClient({ preferences, savedActivityIds }: FeedClient
                 <line x1="38" y1="16" x2="28" y2="38" />
               </svg>
             </div>
-            <p style={{ fontSize: '16px', fontFamily: 'var(--font-display)', fontStyle: 'italic', marginBottom: '6px' }}>
+            <p style={{ fontSize: '18px', fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 500, color: '#0D0D0D', marginBottom: '8px' }}>
               No gems found
             </p>
-            <p style={{ fontSize: '13px', fontFamily: 'var(--font-sans)' }}>
-              Try a different category or refresh your feed.
+            <p style={{ fontSize: '13px', fontFamily: 'var(--font-sans)', color: '#666666', marginBottom: '20px' }}>
+              {selectedCategory !== 'all'
+                ? 'No results in this category — try All or a different filter.'
+                : activeMood
+                  ? 'Nothing matching this vibe right now — try a different mood.'
+                  : 'Try a different search or browse all categories.'}
             </p>
+            {(selectedCategory !== 'all' || activeMood) && (
+              <button
+                onClick={() => { setSelectedCategory('all'); setActiveMood(null) }}
+                style={{
+                  padding: '8px 20px', borderRadius: '8px',
+                  background: '#1A3050', color: 'white',
+                  fontSize: '13px', fontWeight: 500,
+                  border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <div style={{

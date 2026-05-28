@@ -54,7 +54,7 @@ export default function ItineraryPage() {
       <div style={{ maxWidth: '720px', margin: '0 auto', padding: '28px 20px 60px' }}>
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 'clamp(28px,4vw,40px)', fontWeight: 500, letterSpacing: '-0.02em', color: '#0D0D0D', marginBottom: '6px' }}>
-            Itinerary generator
+            Plan your day
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
             Describe your ideal day and AI will build a personalized hidden gem itinerary.
@@ -130,6 +130,32 @@ export default function ItineraryPage() {
             Generate itinerary
           </Button>
         </div>
+
+        {/* Idle empty state */}
+        {!loading && !itinerary && !error && (
+          <div style={{
+            textAlign: 'center', padding: '48px 24px',
+            background: '#FFFFFF', border: '1px solid #E8E8E8',
+            borderRadius: '16px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', opacity: 0.18 }}>
+              <svg width="48" height="33" viewBox="0 0 56 38" fill="none" stroke="#1A3050" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round">
+                <path d="M11,1 L45,1 L56,16 L28,38 L0,16 Z" />
+                <line x1="0" y1="16" x2="56" y2="16" />
+                <line x1="11" y1="1" x2="38" y2="16" />
+                <line x1="45" y1="1" x2="18" y2="16" />
+                <line x1="18" y1="16" x2="28" y2="38" />
+                <line x1="38" y1="16" x2="28" y2="38" />
+              </svg>
+            </div>
+            <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: '16px', fontWeight: 500, color: '#0D0D0D', marginBottom: '6px' }}>
+              Your itinerary will appear here
+            </p>
+            <p style={{ fontSize: '13px', color: '#666666' }}>
+              Describe your day above and hit generate — AI will pick hidden gems that match your vibe.
+            </p>
+          </div>
+        )}
 
         {/* Loading */}
         {loading && (

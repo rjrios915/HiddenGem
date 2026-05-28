@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Menu, X, Compass, Bookmark, Map, Sparkles, UserCircle } from 'lucide-react'
+import { Menu, X, Compass, Bookmark, Map, Sparkles, UserCircle, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import GemSvg from '@/components/ui/GemSvg'
-import type { User } from '@supabase/supabase-js'
+import SubmitGemModal from '@/components/gems/SubmitGemModal'
 
 const NAV_LINKS = [
   { href: '/feed',      label: 'Feed',      Icon: Compass  },
@@ -18,19 +19,11 @@ const NAV_LINKS = [
 export default function Navbar() {
   const pathname = usePathname()
   const router   = useRouter()
-  const [menuOpen,     setMenuOpen]     = useState(false)
-  const [user,         setUser]         = useState<User | null>(null)
-  const [scrolled,     setScrolled]     = useState(false)
-  const [avatarOpen,   setAvatarOpen]   = useState(false)
-
-  useEffect(() => {
-    const sb = createClient()
-    sb.auth.getUser().then(({ data }) => setUser(data.user))
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
+  const { user, authLoaded } = useAuth()
+  const [menuOpen,   setMenuOpen]   = useState(false)
+  const [scrolled,   setScrolled]   = useState(false)
+  const [avatarOpen, setAvatarOpen] = useState(false)
+  const [submitOpen, setSubmitOpen] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16)
@@ -136,6 +129,30 @@ export default function Navbar() {
 
         {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {!authLoaded ? (
+            <div style={{ width: '34px', height: '34px' }} />
+          ) : (
+          <>
+          {user && (
+            <button
+              onClick={() => setSubmitOpen(true)}
+              className="hidden md:flex"
+              style={{
+                alignItems: 'center', gap: '5px',
+                padding: '7px 13px', borderRadius: '8px',
+                fontSize: '13px', fontWeight: 600,
+                fontFamily: 'var(--font-sans)',
+                color: '#FFFFFF', background: '#1A3050',
+                border: '1px solid #1A3050', cursor: 'pointer',
+                transition: 'background 0.15s ease',
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = '#122340')}
+              onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = '#1A3050')}
+            >
+              <Plus size={13} strokeWidth={2.5} />
+              Add a gem
+            </button>
+          )}
           {user ? (
             <div style={{ position: 'relative' }}>
               <button
@@ -217,6 +234,8 @@ export default function Navbar() {
               Sign in
             </Link>
           )}
+          </>
+          )}
 
           {/* Mobile hamburger */}
           <button
@@ -228,7 +247,6 @@ export default function Navbar() {
               color: '#666666',
               cursor: 'pointer',
               padding: '4px',
-              display: 'flex',
             }}
             aria-label="Toggle menu"
           >
@@ -277,8 +295,41 @@ export default function Navbar() {
               </Link>
             )
           })}
+
+          {user && (
+            <>
+              <div style={{ height: '1px', background: '#F0F0F0', margin: '8px 0' }} />
+              <Link
+                href="/profile"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '12px 14px', borderRadius: '10px',
+                  fontSize: '14px', fontWeight: 400, color: '#666666',
+                  textDecoration: 'none', marginBottom: '2px',
+                }}
+              >
+                <UserCircle size={15} strokeWidth={1.5} />
+                Profile & settings
+              </Link>
+              <button
+                onClick={() => { setMenuOpen(false); setSubmitOpen(true) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  width: '100%', padding: '12px 14px', borderRadius: '10px',
+                  fontSize: '14px', fontWeight: 600, color: '#1A3050',
+                  background: 'rgba(26,48,80,0.06)', border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                <Plus size={15} strokeWidth={2.5} />
+                Add a gem
+              </button>
+            </>
+          )}
         </div>
       )}
+
+      <SubmitGemModal isOpen={submitOpen} onClose={() => setSubmitOpen(false)} />
 
       <div style={{ height: '58px' }} />
     </>

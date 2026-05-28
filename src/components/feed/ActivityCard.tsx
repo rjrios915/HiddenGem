@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Bookmark, X, MapPin, ExternalLink, ClipboardList } from 'lucide-react'
 import type { Activity } from '@/types'
 import { formatDistance, priceLevelLabel } from '@/lib/utils'
@@ -56,9 +56,41 @@ export default function ActivityCard({
   onDismiss,
   onClick,
 }: ActivityCardProps) {
-  const [saved,        setSaved]        = useState(isSaved)
-  const [dismissed,    setDismissed]    = useState(false)
-  const [logModalOpen, setLogModalOpen] = useState(false)
+  const [saved,          setSaved]          = useState(isSaved)
+  const [dismissed,      setDismissed]      = useState(false)
+  const [pendingDismiss, setPendingDismiss] = useState(false)
+  const [logModalOpen,   setLogModalOpen]   = useState(false)
+  const cardRef    = useRef<HTMLElement>(null)
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onDismissRef = useRef(onDismiss)
+  onDismissRef.current = onDismiss
+
+  const finalizeDismiss = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setDismissed(true)
+    onDismissRef.current?.(activity.id)
+  }, [activity.id])
+
+  // Click outside the card commits the dismissal
+  useEffect(() => {
+    if (!pendingDismiss) return
+    const handler = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        finalizeDismiss()
+      }
+    }
+    const id = setTimeout(() => document.addEventListener('click', handler), 10)
+    return () => { clearTimeout(id); document.removeEventListener('click', handler) }
+  }, [pendingDismiss, finalizeDismiss])
+
+  // Auto-commit after 6 seconds
+  useEffect(() => {
+    if (!pendingDismiss) return
+    timerRef.current = setTimeout(finalizeDismiss, 6000)
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [pendingDismiss, finalizeDismiss])
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
   if (dismissed) return null
 
@@ -72,25 +104,68 @@ export default function ActivityCard({
 
   const handleDismiss = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setDismissed(true)
-    onDismiss?.(activity.id)
+    setPendingDismiss(true)
+  }
+
+  const handleUndo = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setPendingDismiss(false)
   }
 
   return (
     <article
-      onClick={() => onClick?.(activity)}
+      ref={cardRef}
+      onClick={() => !pendingDismiss && onClick?.(activity)}
       style={{
         background: '#FFFFFF',
         borderRadius: '16px',
         overflow: 'hidden',
-        cursor: onClick ? 'pointer' : 'default',
+        position: 'relative',
+        cursor: onClick && !pendingDismiss ? 'pointer' : 'default',
         boxShadow: '0 1px 4px rgba(26,48,80,0.06), 0 4px 16px rgba(26,48,80,0.06)',
         transition: 'transform 0.22s ease, box-shadow 0.22s ease',
         display: 'flex',
         flexDirection: 'column',
       }}
-      className="group hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(26,48,80,0.14)] animate-fade-up"
+      className={`animate-fade-up ${pendingDismiss ? '' : 'group hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(26,48,80,0.14)]'}`}
     >
+      {/* Pending dismiss overlay */}
+      {pendingDismiss && (
+        <div
+          style={{
+            position: 'absolute', inset: 0, zIndex: 20,
+            background: 'rgba(255,255,255,0.97)',
+            borderRadius: '16px',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 24px',
+          }}
+          className="animate-fade-up"
+        >
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: '#0D0D0D', marginBottom: '3px' }}>
+              Hidden from feed
+            </p>
+            <p style={{ fontSize: '12px', color: '#999999' }}>
+              Click anywhere to confirm · or
+            </p>
+          </div>
+          <button
+            onClick={handleUndo}
+            style={{
+              padding: '9px 18px', borderRadius: '10px',
+              background: '#1A3050', color: '#FFFFFF',
+              border: 'none', cursor: 'pointer',
+              fontSize: '13px', fontWeight: 600,
+              fontFamily: 'var(--font-sans)',
+              flexShrink: 0,
+            }}
+          >
+            Undo
+          </button>
+        </div>
+      )}
       {/* Image / gradient header */}
       <div
         style={{
@@ -129,9 +204,18 @@ export default function ActivityCard({
           background: 'linear-gradient(to top, rgba(255,255,255,0.55) 0%, transparent 45%)',
         }} />
 
-        {/* Category badge — bottom left */}
-        <div style={{ position: 'absolute', bottom: '12px', left: '14px' }}>
+        {/* Category badge + community tag — bottom left */}
+        <div style={{ position: 'absolute', bottom: '12px', left: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <CategoryBadge category={activity.category} size="xs" />
+          {activity.source === 'community' && (
+            <span style={{
+              fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em',
+              padding: '3px 8px', borderRadius: '999px',
+              background: '#FFF8E6', border: '1px solid #F5CC6A', color: '#7A5C1A',
+            }}>
+              ✦ Community
+            </span>
+          )}
         </div>
 
         {/* Gem score — bottom right */}
@@ -239,48 +323,48 @@ export default function ActivityCard({
 
         {/* Footer */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginTop: 'auto', paddingTop: '6px',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+          marginTop: 'auto', paddingTop: '8px', gap: '8px',
           borderTop: '1px solid #F0F0F0',
         }}>
-          <span style={{ fontSize: '11px', color: '#D0D0D0', textTransform: 'capitalize' }}>
-            via {activity.source}
-          </span>
+          <button
+            onClick={e => { e.stopPropagation(); setLogModalOpen(true) }}
+            title="Log visit"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              fontSize: '12px', color: '#1A3050', fontWeight: 600,
+              background: 'rgba(26,48,80,0.07)',
+              border: '1px solid rgba(26,48,80,0.12)',
+              borderRadius: '999px', cursor: 'pointer',
+              padding: '5px 11px', transition: 'all 0.15s',
+              fontFamily: 'var(--font-sans)',
+            }}
+            className="hover:bg-[rgba(26,48,80,0.13)]"
+          >
+            <ClipboardList size={11} strokeWidth={2} />
+            Log visit
+          </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              onClick={e => { e.stopPropagation(); setLogModalOpen(true) }}
-              title="Log visit"
+          {activity.url && (
+            <a
+              href={activity.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
               style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                fontSize: '11px', color: '#666666', fontWeight: 500,
-                background: 'none', border: 'none', cursor: 'pointer',
-                padding: 0, transition: 'color 0.15s',
+                display: 'flex', alignItems: 'center', gap: '5px',
+                fontSize: '12px', color: '#2660A8', fontWeight: 500,
+                background: 'rgba(38,96,168,0.06)',
+                border: '1px solid rgba(38,96,168,0.15)',
+                borderRadius: '999px', padding: '5px 11px',
+                textDecoration: 'none', transition: 'all 0.15s',
               }}
-              className="hover:text-[#1A3050]"
+              className="hover:bg-[rgba(38,96,168,0.11)]"
             >
-              <ClipboardList size={11} strokeWidth={2} />
-              Log visit
-            </button>
-
-            {activity.url && (
-              <a
-                href={activity.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '4px',
-                  fontSize: '11px', color: '#2660A8', fontWeight: 500,
-                  textDecoration: 'none', opacity: 0.75, transition: 'opacity 0.15s',
-                }}
-                className="hover:opacity-100"
-              >
-                <ExternalLink size={10} strokeWidth={2} />
-                View
-              </a>
-            )}
-          </div>
+              <ExternalLink size={10} strokeWidth={2} />
+              View
+            </a>
+          )}
         </div>
       </div>
 

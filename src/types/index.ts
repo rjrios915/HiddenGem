@@ -42,6 +42,7 @@ export interface Activity {
   address?: string
   hidden_gem_score: number
   created_at: string
+  submitted_by?: string | null
 }
 
 export interface SavedActivity {
